@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Calculadora com API</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: grid; justify-content: center; padding-top: 50px; }
+        #calculadora { border: 1px solid #ccc; border-radius: 5px; padding: 10px; box-shadow: 2px 2px 10px #ddd; }
+        #display {
+            width: 235px; height: 40px; border: 1px solid #ccc;
+            text-align: right; padding: 5px; font-size: 24px; margin-bottom: 10px;
+        }
+        .botoes { display: grid; grid-template-columns: repeat(4, 60px); gap: 5px; }
+        .botoes button { height: 40px; font-size: 18px; cursor: pointer; }
+        .botoes .zero { grid-column: span 2; }
+    </style>
+</head>
+<body>
+
+    <div id="calculadora">
+        <div id="display">0</div>
+        <div class="botoes">
+            <button onclick="apiMemoria('mc.php')">MC</button>
+            <button onclick="apiMemoria('mr.php')">MR</button>
+            <button onclick="apiMemoria('mminus.php')">M-</button>
+            <button onclick="apiMemoria('mplus.php')">M+</button>
+            <button onclick="limparTudo()">C</button>
+            <button onclick="apiOperacaoUnaria('raiz.php')">√</button>
+            <button onclick="definirOperacao('divide.php')">/</button>
+            <button onclick="definirOperacao('multiplica.php')">*</button>
+            <button onclick="adicionarNumero('7')">7</button>
+            <button onclick="adicionarNumero('8')">8</button>
+            <button onclick="adicionarNumero('9')">9</button>
+            <button onclick="definirOperacao('subtrai.php')">-</button>
+            <button onclick="adicionarNumero('4')">4</button>
+            <button onclick="adicionarNumero('5')">5</button>
+            <button onclick="adicionarNumero('6')">6</button>
+            <button onclick="definirOperacao('soma.php')">+</button>
+            <button onclick="adicionarNumero('1')">1</button>
+            <button onclick="adicionarNumero('2')">2</button>
+            <button onclick="adicionarNumero('3')">3</button>
+            <button class="igual" onclick="calcular()">=</button>
+            <button class="zero" onclick="adicionarNumero('0')">0</button>
+            <button onclick="adicionarNumero('.')">.</button>
+        </div>
+    </div>
+
+    <script>
+        // URL base da sua API
+        const API_URL = "http://localhost/api/"; // <-- MUDE ISSO para o caminho da sua pasta API
+
+        const display = document.getElementById('display');
+        
+        // Variáveis de estado da calculadora
+        let valorAtual = '0';
+        let valorAnterior = '';
+        let operacaoPendente = null; // Armazena a URL da API (ex: 'soma.php')
+        let resetarVisor = false;
+
+        function atualizarVisor(valor) {
+            display.textContent = valor;
+        }
+
+        function limparTudo() {
+            valorAtual = '0';
+            valorAnterior = '';
+            operacaoPendente = null;
+            resetarVisor = false;
+            atualizarVisor(valorAtual);
+        }
+
+        function adicionarNumero(numero) {
+            if (valorAtual === '0' || resetarVisor) {
+                valorAtual = numero;
+                resetarVisor = false;
+            } else {
+                valorAtual += numero;
+            }
+            atualizarVisor(valorAtual);
+        }
+
+        function definirOperacao(urlApi) {
+            if (operacaoPendente !== null) {
+               
+                calcular();
+            }
+            valorAnterior = valorAtual;
+            operacaoPendente = urlApi;
+            resetarVisor = true;
+        }
+
+        function calcular() {
+            if (operacaoPendente === null || resetarVisor) {
+                return; // Nada para calcular
+            }
+
+            const xhttp = new XMLHttpRequest();
+            xhttp.onload = function() {
+                const obj = JSON.parse(this.responseText);
+                if (obj.erro) {
+                    alert(obj.erro);
+                    limparTudo();
+                } else {
+                    valorAtual = String(obj.resultado);
+                    atualizarVisor(valorAtual);
+                }
+            }
+            
+            const url = `${API_URL}${operacaoPendente}?x=${valorAnterior}&y=${valorAtual}`;
+            xhttp.open("GET", url);
+            xhttp.send();
+
+           
+            operacaoPendente = null;
+            valorAnterior = '';
+            resetarVisor = true;
+        }
+
+        
+        function apiOperacaoUnaria(urlApi) {
+            const xhttp = new XMLHttpRequest();
+            xhttp.onload = function() {
+                const obj = JSON.parse(this.responseText);
+                if (obj.erro) {
+                    alert(obj.erro);
+                } else {
+                    valorAtual = String(obj.resultado);
+                    atualizarVisor(valorAtual);
+                    resetarVisor = true;
+                }
+            }
+            const url = `${API_URL}${urlApi}?x=${valorAtual}`;
+            xhttp.open("GET", url);
+            xhttp.send();
+        }
+
+        
+        function apiMemoria(urlApi) {
+            let urlParams = '';
+
+          
+            if (urlApi === 'mplus.php' || urlApi === 'mminus.php') {
+                urlParams = `?valor=${valorAtual}`;
+            }
+
+            const xhttp = new XMLHttpRequest();
+            xhttp.onload = function() {
+                const obj = JSON.parse(this.responseText);
+                
+               
+                if (urlApi === 'mr.php') {
+                    valorAtual = String(obj.valor);
+                    atualizarVisor(valorAtual);
+                    resetarVisor = true;
+                } else {
+                    
+                    console.log(`API ${urlApi} executada. Novo valor: ${obj.novo_valor}`);
+                }
+            }
+            
+            const url = `${API_URL}${urlApi}${urlParams}`;
+            xhttp.open("GET", url);
+            xhttp.send();
+        }
+
+    </script>
+</body>
+</html>
